@@ -104,8 +104,8 @@ def create_models():
             base_dir = os.path.dirname(x_file_name)
             y_file_name = pathlib.Path(base_dir, 'y_' + basename + common.csv_suffix)
             log_verbose(' Retrieving data for: ' + basename)
-            x_all = pd.read_csv(x_file_name)
-            y_all = pd.read_csv(y_file_name)
+            x_all = pd.read_csv(x_file_name, header=None)
+            y_all = pd.read_csv(y_file_name, header=None)
             #create regression model for given class
             RMSE, R_squared, out, xgb_reg = create_regression_model(x_all, y_all)
             summary.loc[i] = [basename, RMSE, R_squared, None]

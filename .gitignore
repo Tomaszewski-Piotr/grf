@@ -112,4 +112,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-.idea/grf.iml
+.idea/
+out/~$output.xlsx
