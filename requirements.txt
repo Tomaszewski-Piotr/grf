@@ -1,0 +1,9 @@
+pillow
+numpy
+pandas
+streamlit
+xlsxwriter
+xgboost
+sklearn
+torch
+torchvision
