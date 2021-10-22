@@ -12,7 +12,7 @@ import pathlib
 from joblib import dump, load
 from sklearn.preprocessing import LabelEncoder
 
-use_GPU = False   # use GPU when training
+use_GPU = True   # use GPU when training
 xgb_verbosity = 1 # verbosity level
 
 # creates xgboost regression model for given x, y input
@@ -94,9 +94,20 @@ def create_classification_model(classification_set):
     out['Predicted_encoded'] = y_pred
     return xgb_classifier, encoder, accuracy, cm_df, out
 
+def process_classification_model(classification_set, name, writer):
+    classification_set_df = pd.concat(classification_set, axis=0, ignore_index=True)
+    xgb_class, encoder, accuracy, cm, out = create_classification_model(classification_set_df)
+    dump(xgb_class, open(common.out_file(name+'_classifier' + common.model_suffix), "wb"))
+    dump(encoder, open(common.out_file(name+'_encoder' + common.model_suffix), "wb"))
+    out.to_excel(writer, sheet_name = name + '_classification')
+    cm.to_excel(writer, sheet_name = name + '_confusion matrix')
+    return accuracy
+
 def create_models():
     i=0
-    classification_set = [] # to be used for classification training
+    complete_classification_set = [] # to be used for classification training
+    low_classification_set = []  # to be used for classification training
+    high_classification_set = []  # to be used for classification training
     with pd.ExcelWriter(common.out_file('output.xlsx')) as writer:
         summary = pd.DataFrame(columns=['Name', 'RMSE', 'R_squared', 'Accuracy'])  # report
         for x_file_name in common.find_data_csv():
@@ -113,15 +124,24 @@ def create_models():
             dump(xgb_reg, open(common.out_file(basename+common.model_suffix), "wb"))
             i = i+1
             x_all['class'] = basename
-            classification_set.append(x_all) #add to the set used to do classification training
+            complete_classification_set.append(x_all) #add to the set used to do classification training
+            if 'low_porosity' in basename:
+                low_classification_set.append(x_all)  # add to the set used to do classification training
+            else:
+                high_classification_set.append(x_all)  # add to the set used to do classification training
         # construct the classification model
-        classification_set_df = pd.concat(classification_set, axis=0, ignore_index=True)
-        xgb_class, encoder, accuracy, cm, out = create_classification_model(classification_set_df)
-        dump(xgb_class, open(common.out_file('classifier' + common.model_suffix), "wb"))
-        dump(encoder, open(common.out_file('encoder' + common.model_suffix), "wb"))
-        out.to_excel(writer, sheet_name='Classification')
-        cm.to_excel(writer, sheet_name='Classification confusion matrix')
-        summary.loc[i+1] = ['Classification', None, None, accuracy]
+        complete_accuracy = process_classification_model(complete_classification_set, 'complete', writer)
+        low_accuracy = process_classification_model(low_classification_set, 'low_porosity', writer)
+        high_accuracy = process_classification_model(high_classification_set, 'high_porosity', writer)
+        #classification_set_df = pd.concat(complete_classification_set, axis=0, ignore_index=True)
+        #xgb_class, encoder, accuracy, cm, out = create_classification_model(classification_set_df)
+        #dump(xgb_class, open(common.out_file('classifier' + common.model_suffix), "wb"))
+        #dump(encoder, open(common.out_file('encoder' + common.model_suffix), "wb"))
+        #out.to_excel(writer, sheet_name='Classification')
+        #cm.to_excel(writer, sheet_name='Classification confusion matrix')
+        summary.loc[i + 1] = ['Classification', None, None, complete_accuracy]
+        summary.loc[i + 2] = ['Low porosity classification', None, None, low_accuracy]
+        summary.loc[i + 3] = ['High porosity classification', None, None, high_accuracy]
         summary.to_excel(writer, sheet_name='Summary')
 
 
